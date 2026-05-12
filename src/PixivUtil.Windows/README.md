@@ -84,6 +84,11 @@ artifacts\PixivUtil.Windows\win-x64\
 
 Use `-Runtime win-arm64` for ARM64 Windows devices.
 
+> Current status: the full WinUI shell is checked in as the target architecture,
+> but the GitHub-hosted Windows runner is failing inside the Windows App SDK XAML
+> compiler without useful diagnostics. The downloadable trial executable is built
+> from `src/PixivUtil.WindowsTrial` until that compiler issue is isolated.
+
 ## Roadmap for removing the bridge
 
 1. Keep C# `PixivApiClient` responsible for authenticated JSON endpoint access.
