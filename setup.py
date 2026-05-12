@@ -5,12 +5,14 @@ import sys
 from os import path
 
 try:
-    from setuptools import convert_path, find_packages, setup
+    from setuptools import find_packages, setup
+    try:
+        from setuptools._distutils.util import convert_path
+    except ImportError:
+        from distutils.util import convert_path
     SETUPTOOLS_USED = True
 except ImportError:
-    from distutils.core import find_packages, setup
-    from distutils.util import convert_path
-    SETUPTOOLS_USED = False
+    raise RuntimeError("setuptools is required to build PixivUtil2")
 
 isWindows = (platform.system() == "Windows")
 ranWithPy3 = sys.version_info >= (3, 0)
