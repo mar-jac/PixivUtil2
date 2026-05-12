@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.IO;
+using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace PixivUtil.WindowsTrial;
 
@@ -9,9 +12,14 @@ public partial class MainWindow : Window
 {
     private readonly string _appDirectory = AppContext.BaseDirectory;
 
+    public ObservableCollection<ArtistCard> Artists { get; } = [];
+
+    public ObservableCollection<ArtworkCard> GalleryItems { get; } = [];
+
     public MainWindow()
     {
         InitializeComponent();
+        DataContext = this;
         BackendStatus.Text = BackendPath() is null
             ? "PixivUtil2.exe was not found beside this trial shell."
             : "PixivUtil2 backend detected and ready.";
@@ -21,19 +29,47 @@ public partial class MainWindow : Window
 
     private void SeedDesignPreview()
     {
-        ArtistList.Items.Clear();
-        foreach (var artist in new[] { "neco - 234 works", "lack - 186 works", "ASK - 98 works", "redjuice - 58 works", "derori - 49 works" })
-        {
-            ArtistList.Items.Add(artist);
-        }
+        Artists.Clear();
+        Artists.Add(new ArtistCard("neco", 234, Palette("#C984D9", "#75B7FF"), true));
+        Artists.Add(new ArtistCard("lack", 186, Palette("#8AA8FF", "#4E6BD8"), true));
+        Artists.Add(new ArtistCard("ASK", 98, Palette("#EAA15F", "#AC6CF6"), false));
+        Artists.Add(new ArtistCard("redjuice", 58, Palette("#6DFFDB", "#4B85FF"), false));
+        Artists.Add(new ArtistCard("derori", 49, Palette("#F96B9B", "#7D5CFF"), false));
 
-        Gallery.Items.Clear();
-        for (var i = 1; i <= 24; i++)
+        GalleryItems.Clear();
+        var artists = Artists.Select(artist => artist.Name).ToArray();
+        var titles = new[]
         {
-            Gallery.Items.Add($"Artwork {i:00}  |  Artist {((i % 5) + 1)}  |  {Random.Shared.Next(900, 13000):N0} bookmarks");
+            "twilight", "sky bloom", "archive signal", "rainy step", "blue station", "cloudline",
+            "scarlet orbit", "distant tower", "night glass", "fragment", "summer pulse", "mirror city",
+            "field notes", "quiet shore", "paper moon", "afterimage", "window light", "star map"
+        };
+        var gradients = new[]
+        {
+            Palette("#284A8A", "#ED7B9B"),
+            Palette("#2176FF", "#B4ECFF"),
+            Palette("#202838", "#D65A7E"),
+            Palette("#3932A8", "#FF84D7"),
+            Palette("#0F8A9D", "#91F6FF"),
+            Palette("#2151A5", "#F5B36A"),
+            Palette("#3A1F3F", "#FF6B6B"),
+            Palette("#203459", "#D77943")
+        };
+
+        for (var i = 0; i < 30; i++)
+        {
+            GalleryItems.Add(new ArtworkCard(
+                (i + 1).ToString(),
+                titles[i % titles.Length],
+                artists[i % artists.Length],
+                $"{Random.Shared.Next(900, 13000):N0}",
+                $"{(i % 5) + 1}/{((i % 3) + 1) * 4}",
+                i % 4 == 0 ? "#manga #ugoira #new" : "#illust #followed #safe",
+                gradients[i % gradients.Length]));
         }
 
         Queue.Items.Add("No active downloads");
+        Gallery.SelectedIndex = 0;
     }
 
     private void PreviewClicked(object sender, RoutedEventArgs e) => SetMode("Preview");
@@ -48,7 +84,7 @@ public partial class MainWindow : Window
 
     private void SetMode(string mode)
     {
-        Status.Text = $"{mode} view loaded. Network-backed previews are implemented in the WinUI branch; this trial shell is bundled to validate Windows app packaging.";
+        Status.Text = $"{mode} view loaded.";
         Output.Text = $"Selected gallery mode: {mode}{Environment.NewLine}{Output.Text}";
     }
 
@@ -59,14 +95,13 @@ public partial class MainWindow : Window
 
     private void DownloadSelectedClicked(object sender, RoutedEventArgs e)
     {
-        if (Gallery.SelectedIndex < 0)
+        if (Gallery.SelectedItem is not ArtworkCard artwork)
         {
             Status.Text = "Select an artwork first.";
             return;
         }
 
-        var artworkId = (Gallery.SelectedIndex + 1).ToString();
-        RunBackend(["-s", "2", "-x", artworkId], $"Download artwork {artworkId}");
+        RunBackend(["-s", "2", "-x", artwork.Id], $"Download artwork {artwork.Id}");
     }
 
     private void DownloadSelectedArtistClicked(object sender, RoutedEventArgs e)
@@ -83,7 +118,9 @@ public partial class MainWindow : Window
 
     private void OpenSelectedClicked(object sender, RoutedEventArgs e)
     {
-        var artworkId = Math.Max(Gallery.SelectedIndex + 1, 1).ToString();
+        var artworkId = Gallery.SelectedItem is ArtworkCard artwork
+            ? artwork.Id
+            : Math.Max(Gallery.SelectedIndex + 1, 1).ToString();
         OpenUrl($"https://www.pixiv.net/artworks/{artworkId}");
     }
 
@@ -91,6 +128,26 @@ public partial class MainWindow : Window
     {
         var memberId = Math.Max(ArtistList.SelectedIndex + 1, 1).ToString();
         OpenUrl($"https://www.pixiv.net/users/{memberId}");
+    }
+
+    private void GallerySelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (Gallery.SelectedItem is not ArtworkCard artwork)
+        {
+            return;
+        }
+
+        SelectedTitle.Text = artwork.Title;
+        SelectedArtist.Text = artwork.Artist;
+        InspectorPreview.Background = artwork.ThumbnailBrush;
+    }
+
+    private void ArtistSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ArtistList.SelectedItem is ArtistCard artist)
+        {
+            Status.Text = $"Filtering preview by {artist.Name}.";
+        }
     }
 
     private void RunBackend(IReadOnlyList<string> arguments, string title)
@@ -190,4 +247,51 @@ public partial class MainWindow : Window
             UseShellExecute = true
         });
     }
+
+    private static LinearGradientBrush Palette(string start, string end)
+    {
+        return new LinearGradientBrush(
+            (Color)ColorConverter.ConvertFromString(start),
+            (Color)ColorConverter.ConvertFromString(end),
+            45);
+    }
+}
+
+public sealed class ArtistCard(string name, int workCount, Brush avatarBrush, bool isSelected)
+{
+    public string Name { get; } = name;
+
+    public int WorkCount { get; } = workCount;
+
+    public string WorkCountText => $"{WorkCount:N0} works";
+
+    public Brush AvatarBrush { get; } = avatarBrush;
+
+    public bool IsSelected { get; set; } = isSelected;
+}
+
+public sealed class ArtworkCard(
+    string id,
+    string title,
+    string artist,
+    string bookmarks,
+    string pageText,
+    string tags,
+    Brush thumbnailBrush)
+{
+    public string Id { get; } = id;
+
+    public string Title { get; } = title;
+
+    public string Artist { get; } = artist;
+
+    public string BookmarkText => bookmarks;
+
+    public string PageText { get; } = pageText;
+
+    public string Tags { get; } = tags;
+
+    public Brush ThumbnailBrush { get; } = thumbnailBrush;
+
+    public bool IsSelected { get; set; }
 }
