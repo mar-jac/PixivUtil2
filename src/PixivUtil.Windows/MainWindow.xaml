@@ -31,6 +31,48 @@
                 <StackPanel Spacing="14">
                     <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                         <StackPanel Spacing="10">
+                            <TextBlock Text="Gallery" FontSize="18" FontWeight="SemiBold" />
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+                                <Button Content="Preview" Command="{Binding LoadGalleryFeedCommand}" CommandParameter="Preview" />
+                                <Button Grid.Column="1" Content="New" Command="{Binding LoadGalleryFeedCommand}" CommandParameter="New" />
+                                <Button Grid.Column="2" Content="Followed" Command="{Binding LoadGalleryFeedCommand}" CommandParameter="Followed" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                <Button Content="Trending" Command="{Binding LoadTrendingCommand}" />
+                                <Button Grid.Column="1" Content="Popular" Command="{Binding LoadPopularCommand}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Artists in this view" FontSize="18" FontWeight="SemiBold" />
+                                <Button Grid.Column="1" Content="Clear" Command="{Binding ClearSelectedArtistCommand}" />
+                            </Grid>
+                            <ListView
+                                MaxHeight="250"
+                                ItemsSource="{Binding FollowedArtists}"
+                                SelectedItem="{Binding SelectedArtist, Mode=TwoWay}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:FollowedArtist">
+                                        <Grid Padding="6" ColumnDefinitions="*,Auto">
+                                            <StackPanel>
+                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{x:Bind WorkCountDisplay}" FontSize="12" Opacity="0.64" />
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <Button Content="Open selected artist" Command="{Binding OpenSelectedArtistCommand}" />
+                            <Button Content="Download selected artist" Command="{Binding DownloadSelectedArtistCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
                             <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
                             <InfoBadge Value="OK" />
                             <TextBlock Text="{Binding AccountStatus}" Opacity="0.8" />
@@ -44,7 +86,7 @@
 
                     <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                         <StackPanel Spacing="10">
-                            <TextBlock Text="Filters" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="Filters and automation" FontSize="18" FontWeight="SemiBold" />
                             <ComboBox
                                 Header="Content type"
                                 ItemsSource="{Binding ContentTypeFilters}"
@@ -74,18 +116,25 @@
 
             <Grid Grid.Column="1" RowDefinitions="Auto,2*,Auto,*" RowSpacing="12">
                 <Border Padding="12" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
+                        <Button Content="Download selected" Command="{Binding DownloadSelectedPreviewCommand}" />
+                        <Button Grid.Column="1" Content="Open in browser" Command="{Binding OpenSelectedPreviewCommand}" />
+                        <Button Grid.Column="2" Content="Filter" Command="{Binding LoadGalleryFeedCommand}" CommandParameter="{Binding GalleryFeed}" />
                         <TextBox
+                            Grid.Column="3"
                             PlaceholderText="Search history, artist, artwork ID, or file path"
                             Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Column="1" Content="Refresh all" Command="{Binding RefreshWorkspaceCommand}" />
-                        <Button Grid.Column="2" Content="Preview followed" Command="{Binding PreviewNewFollowedCommand}" />
-                        <Button Grid.Column="3" Content="Download new" Command="{Binding DownloadNewFollowedCommand}" />
+                        <Button Grid.Column="4" Content="Refresh all" Command="{Binding RefreshWorkspaceCommand}" />
+                        <Button Grid.Column="5" Content="Preview followed" Command="{Binding PreviewNewFollowedCommand}" />
+                        <Button Grid.Column="6" Content="Download new" Command="{Binding DownloadNewFollowedCommand}" />
                     </Grid>
                 </Border>
 
                 <Grid Grid.Row="1" RowDefinitions="Auto,*">
-                    <TextBlock Text="Followed-artist preview gallery" FontSize="20" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding GalleryTitle}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="{Binding GalleryStatusLine}" Opacity="0.64" VerticalAlignment="Center" />
+                    </Grid>
                     <GridView
                         Grid.Row="1"
                         Margin="0,10,0,0"
@@ -151,6 +200,7 @@
                                 <Button Content="Open Pixiv" Command="{Binding OpenSelectedPreviewCommand}" />
                                 <Button Grid.Column="1" Content="Download" Command="{Binding DownloadSelectedPreviewCommand}" />
                             </Grid>
+                            <Button Content="Download artist works" Command="{Binding DownloadSelectedArtistCommand}" />
                             <Button Content="Redownload selected history item" Command="{Binding RedownloadSelectedHistoryCommand}" />
                         </StackPanel>
                     </Border>

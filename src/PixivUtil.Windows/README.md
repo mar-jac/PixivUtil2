@@ -23,10 +23,13 @@ as the desktop UI technology.
 - New content downloads from followed artists using the compatibility bridge for
   the existing feature-complete downloader.
 - Combined workspace UI with:
+  - screenshot-style gallery modes for Preview, New, Followed, Trending, and Popular
   - account/backend health
+  - artist sidebar populated from the active feed for discovery
   - content-type and R-18 preview filters
   - search across history, artwork IDs, member IDs, and local paths
   - selected-preview downloads
+  - selected-artist downloads
   - redownload from history
   - download queue state and backend output
   - CSV export for filtered history
@@ -46,6 +49,13 @@ validated independently:
   mode has a native C# implementation.
 - `MainViewModel` tracks active jobs and command output so failures are visible
   instead of being swallowed by the UI.
+
+Trending and Popular views are wired to Pixiv ranking JSON endpoints. Artist
+discovery starts from the artists represented in those feeds: the user can open
+the artist on Pixiv or download that artist's works through the existing member
+download mode. A native in-app "follow this artist" action should be added only
+after the authenticated Pixiv follow endpoint is verified against current Pixiv
+CSRF/post-key requirements.
 
 ## Why a bridge still exists
 

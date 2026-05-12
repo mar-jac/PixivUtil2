@@ -4,6 +4,7 @@ public sealed record PreviewItem(
     string Id,
     string Title,
     string ArtistName,
+    string? ArtistId,
     string PageUrl,
     string? ThumbnailUrl,
     string? LocalPath = null,
@@ -18,6 +19,10 @@ public sealed record PreviewItem(
             : new Uri(ThumbnailUrl, UriKind.Absolute);
 
     public Uri PageUri => new(PageUrl, UriKind.Absolute);
+
+    public Uri? ArtistUri => string.IsNullOrWhiteSpace(ArtistId)
+        ? null
+        : new Uri($"https://www.pixiv.net/users/{ArtistId}", UriKind.Absolute);
 
     public string Summary =>
         $"{ContentType} | {Math.Max(PageCount, 1)} page(s)" +

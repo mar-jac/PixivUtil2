@@ -73,6 +73,52 @@ public sealed class PixivApiClient : IDisposable
         return previews;
     }
 
+    public async Task<IReadOnlyList<PreviewItem>> GetNewArtworkPreviewsAsync(
+        int limit = 48,
+        string typeMode = "illust",
+        bool r18 = false,
+        CancellationToken cancellationToken = default)
+    {
+        ApplyCookies();
+
+        var uri = new Uri(
+            "https://www.pixiv.net/ajax/illust/new" +
+            $"?lastId=0&limit={limit}&type={Uri.EscapeDataString(typeMode)}&r18={r18.ToString().ToLowerInvariant()}&lang=en");
+        using var response = await _httpClient.GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        ThrowIfPixivError(document.RootElement);
+
+        var body = document.RootElement.GetProperty("body");
+        return body.TryGetProperty("illusts", out var illusts) && illusts.ValueKind == JsonValueKind.Array
+            ? ParseIllustArray(illusts).ToList()
+            : [];
+    }
+
+    public async Task<IReadOnlyList<PreviewItem>> GetRankingPreviewsAsync(
+        string mode = "daily",
+        string content = "illust",
+        int page = 1,
+        CancellationToken cancellationToken = default)
+    {
+        ApplyCookies();
+
+        var uri = new Uri(
+            "https://www.pixiv.net/ranking.php" +
+            $"?mode={Uri.EscapeDataString(mode)}&content={Uri.EscapeDataString(content)}&p={page}&format=json");
+        using var response = await _httpClient.GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        return document.RootElement.TryGetProperty("contents", out var contents) && contents.ValueKind == JsonValueKind.Array
+            ? ParseRankingContents(contents).ToList()
+            : [];
+    }
+
     public async Task<PreviewItem> GetArtworkPreviewAsync(
         string artworkId,
         CancellationToken cancellationToken = default)
@@ -96,9 +142,10 @@ public sealed class PixivApiClient : IDisposable
             artworkId,
             title,
             artist,
+            GetString(body, "userId"),
             $"https://www.pixiv.net/artworks/{artworkId}",
             thumbnail,
-            ContentType: GetString(body, "illustType") ?? GetString(body, "xRestrict") ?? "Illust",
+            ContentType: ContentTypeName(GetInt(body, "illustType")),
             PageCount: GetInt(body, "pageCount") ?? 1,
             BookmarkCount: GetInt(body, "bookmarkCount") ?? 0,
             IsR18: GetInt(body, "xRestrict") > 0);
@@ -134,12 +181,61 @@ public sealed class PixivApiClient : IDisposable
                 id,
                 GetString(item, "title") ?? $"Artwork {id}",
                 GetString(item, "userName") ?? "Unknown artist",
+                GetString(item, "userId"),
                 $"https://www.pixiv.net/artworks/{id}",
                 TryGetUrl(item, "url") ?? TryGetUrl(item, "thumb") ?? TryGetUrl(item, "regular"),
-                ContentType: GetString(item, "illustType") ?? "Illust",
+                ContentType: ContentTypeName(GetInt(item, "illustType")),
                 PageCount: GetInt(item, "pageCount") ?? 1,
                 BookmarkCount: GetInt(item, "bookmarkCount") ?? 0,
                 IsR18: GetInt(item, "xRestrict") > 0);
+        }
+    }
+
+    private static IEnumerable<PreviewItem> ParseIllustArray(JsonElement illusts)
+    {
+        foreach (var item in illusts.EnumerateArray())
+        {
+            var id = GetString(item, "id") ?? GetString(item, "illustId");
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            yield return new PreviewItem(
+                id,
+                GetString(item, "title") ?? $"Artwork {id}",
+                GetString(item, "userName") ?? "Unknown artist",
+                GetString(item, "userId"),
+                $"https://www.pixiv.net/artworks/{id}",
+                TryGetUrl(item, "url") ?? TryGetUrl(item, "thumb") ?? TryGetUrl(item, "regular"),
+                ContentType: ContentTypeName(GetInt(item, "illustType")),
+                PageCount: GetInt(item, "pageCount") ?? 1,
+                BookmarkCount: GetInt(item, "bookmarkCount") ?? 0,
+                IsR18: GetInt(item, "xRestrict") > 0);
+        }
+    }
+
+    private static IEnumerable<PreviewItem> ParseRankingContents(JsonElement contents)
+    {
+        foreach (var item in contents.EnumerateArray())
+        {
+            var id = GetString(item, "illust_id") ?? GetString(item, "id");
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            yield return new PreviewItem(
+                id,
+                GetString(item, "title") ?? $"Artwork {id}",
+                GetString(item, "user_name") ?? GetString(item, "userName") ?? "Unknown artist",
+                GetString(item, "user_id") ?? GetString(item, "userId"),
+                $"https://www.pixiv.net/artworks/{id}",
+                TryGetUrl(item, "url") ?? TryGetUrl(item, "illust_url") ?? TryGetUrl(item, "thumb"),
+                ContentType: GetString(item, "illust_type") ?? ContentTypeName(GetInt(item, "illustType")),
+                PageCount: GetInt(item, "illust_page_count") ?? GetInt(item, "pageCount") ?? 1,
+                BookmarkCount: GetInt(item, "total_bookmarks") ?? GetInt(item, "bookmarkCount") ?? 0,
+                IsR18: GetString(item, "illust_content_type")?.Contains("r18", StringComparison.OrdinalIgnoreCase) == true);
         }
     }
 
@@ -174,6 +270,16 @@ public sealed class PixivApiClient : IDisposable
             JsonValueKind.Number when property.TryGetInt32(out var value) => value,
             JsonValueKind.String when int.TryParse(property.GetString(), out var value) => value,
             _ => null
+        };
+    }
+
+    private static string ContentTypeName(int? illustType)
+    {
+        return illustType switch
+        {
+            1 => "Manga",
+            2 => "Ugoira",
+            _ => "Illust"
         };
     }
 

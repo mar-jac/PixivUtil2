@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly PixivApiClient _apiClient;
     private readonly LegacyPixivBridge _downloadBridge;
     private readonly AppSettings _settings;
+    private IReadOnlyList<PreviewItem> _previewCache = [];
 
     [ObservableProperty]
     private string _pixivCookie = "";
@@ -25,6 +26,9 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _searchQuery = "";
+
+    [ObservableProperty]
+    private string _galleryFeed = "Followed";
 
     [ObservableProperty]
     private string _contentTypeFilter = "All";
@@ -66,6 +70,9 @@ public partial class MainViewModel : ObservableObject
     private PreviewItem? _selectedPreview;
 
     [ObservableProperty]
+    private FollowedArtist? _selectedArtist;
+
+    [ObservableProperty]
     private DownloadHistoryItem? _selectedHistoryItem;
 
     public MainViewModel()
@@ -92,6 +99,7 @@ public partial class MainViewModel : ObservableObject
         DownloadModes = new ObservableCollection<DownloadMode>(DownloadMode.All);
         SelectedDownloadMode = DownloadModes.FirstOrDefault(static mode => mode.Key == "8") ?? DownloadModes.FirstOrDefault();
 
+        GalleryFeeds = new ObservableCollection<string>(["Preview", "New", "Followed", "Trending", "Popular"]);
         ContentTypeFilters = new ObservableCollection<string>(["All", "Illust", "Manga", "Ugoira"]);
         PixivCookie = _settings.PixivCookie;
         Status = _downloadBridge.IsAvailable
@@ -101,9 +109,13 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<DownloadMode> DownloadModes { get; }
 
+    public ObservableCollection<string> GalleryFeeds { get; }
+
     public ObservableCollection<string> ContentTypeFilters { get; }
 
     public ObservableCollection<PreviewItem> NewFollowedPreviews { get; } = [];
+
+    public ObservableCollection<FollowedArtist> FollowedArtists { get; } = [];
 
     public ObservableCollection<DownloadHistoryItem> AccountHistory { get; } = [];
 
@@ -122,6 +134,17 @@ public partial class MainViewModel : ObservableObject
     public string DatabasePath => _settings.DatabasePath;
 
     public string DownloadRoot => _settings.RootDirectory;
+
+    public string GalleryTitle => GalleryFeed switch
+    {
+        "New" => "New Pixiv artwork",
+        "Trending" => "Trending now",
+        "Popular" => "Most popular",
+        "Preview" => "Preview gallery",
+        _ => "Updated artwork from followed artists"
+    };
+
+    public string GalleryStatusLine => $"{NewFollowedPreviews.Count:N0} works in {GalleryFeed.ToLowerInvariant()} view";
 
     [RelayCommand]
     private void SaveCookie()
@@ -175,6 +198,40 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task LoadGalleryFeedAsync(string? feed)
+    {
+        if (!string.IsNullOrWhiteSpace(feed))
+        {
+            GalleryFeed = feed;
+        }
+
+        await RunBusyAsync($"Loading {GalleryFeed} gallery...", async cancellationToken =>
+        {
+            await LoadGalleryCoreAsync(cancellationToken);
+        });
+    }
+
+    [RelayCommand]
+    private async Task LoadTrendingAsync()
+    {
+        GalleryFeed = "Trending";
+        await RunBusyAsync("Loading trending artwork...", async cancellationToken =>
+        {
+            await LoadGalleryCoreAsync(cancellationToken);
+        });
+    }
+
+    [RelayCommand]
+    private async Task LoadPopularAsync()
+    {
+        GalleryFeed = "Popular";
+        await RunBusyAsync("Loading popular artwork...", async cancellationToken =>
+        {
+            await LoadGalleryCoreAsync(cancellationToken);
+        });
+    }
+
+    [RelayCommand]
     private async Task DownloadNewFollowedAsync()
     {
         await RunBusyAsync("Downloading new followed-artist content...", async cancellationToken =>
@@ -221,6 +278,39 @@ public partial class MainViewModel : ObservableObject
             await LoadHistoryCoreAsync(cancellationToken);
         });
     }
+
+    [RelayCommand]
+    private async Task DownloadSelectedArtistAsync()
+    {
+        var artistId = SelectedArtist?.MemberId ?? SelectedPreview?.ArtistId;
+        var artistName = SelectedArtist?.Name ?? SelectedPreview?.ArtistName ?? "selected artist";
+        if (string.IsNullOrWhiteSpace(artistId))
+        {
+            Status = "Select an artist with a Pixiv user ID first.";
+            return;
+        }
+
+        await RunBusyAsync($"Downloading works from {artistName}...", async cancellationToken =>
+        {
+            var mode = DownloadMode.All.First(static item => item.Key == "1");
+            var request = new DownloadRequest(
+                mode,
+                artistId,
+                StartPageNumber,
+                EndPageNumber,
+                IncludeSketch,
+                UseWildcardTags: false,
+                BookmarkCountLimit: -1);
+
+            await RunDownloadJobAsync(
+                $"Download artist {artistId}",
+                artistName,
+                token => _downloadBridge.DownloadAsync(request, token),
+                cancellationToken);
+            await LoadHistoryCoreAsync(cancellationToken);
+        });
+    }
+
 
     [RelayCommand]
     private async Task DownloadSelectedModeAsync()
@@ -307,6 +397,21 @@ public partial class MainViewModel : ObservableObject
         if (SelectedPreview is not null)
         {
             await Launcher.LaunchUriAsync(SelectedPreview.PageUri);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenSelectedArtistAsync()
+    {
+        if (SelectedPreview?.ArtistUri is not null)
+        {
+            await Launcher.LaunchUriAsync(SelectedPreview.ArtistUri);
+            return;
+        }
+
+        if (SelectedArtist?.MemberId is not null)
+        {
+            await Launcher.LaunchUriAsync(new Uri($"https://www.pixiv.net/users/{SelectedArtist.MemberId}"));
         }
     }
 
@@ -410,7 +515,12 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSearchQueryChanged(string value) => RefreshVisibleHistory();
 
-    partial void OnContentTypeFilterChanged(string value) => Status = $"Preview filter set to {value}.";
+    partial void OnContentTypeFilterChanged(string value)
+    {
+        RefreshArtistList();
+        ApplyPreviewFilters();
+        Status = $"Preview filter set to {value}.";
+    }
 
     private async Task LoadHistoryCoreAsync(CancellationToken cancellationToken)
     {
@@ -421,6 +531,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         RefreshVisibleHistory();
+        RefreshArtistList();
 
         if (AccountHistory.Count > 0)
         {
@@ -430,16 +541,27 @@ public partial class MainViewModel : ObservableObject
 
     private async Task LoadFollowedPreviewsCoreAsync(CancellationToken cancellationToken)
     {
-        NewFollowedPreviews.Clear();
-        foreach (var item in await _apiClient.GetNewFollowedPreviewsAsync(StartPageNumber, cancellationToken: cancellationToken))
-        {
-            if (ShouldShowPreview(item))
-            {
-                NewFollowedPreviews.Add(item);
-            }
-        }
+        GalleryFeed = "Followed";
+        await LoadGalleryCoreAsync(cancellationToken);
+    }
 
-        Status = $"Loaded {NewFollowedPreviews.Count} followed-artist preview(s).";
+    private async Task LoadGalleryCoreAsync(CancellationToken cancellationToken)
+    {
+        NewFollowedPreviews.Clear();
+        var typeMode = ContentTypeFilter == "Manga" ? "manga" : "illust";
+        _previewCache = GalleryFeed switch
+        {
+            "New" => await _apiClient.GetNewArtworkPreviewsAsync(48, typeMode, ShowR18, cancellationToken),
+            "Trending" => await _apiClient.GetRankingPreviewsAsync("daily", typeMode, StartPageNumber, cancellationToken),
+            "Popular" => await _apiClient.GetRankingPreviewsAsync("weekly", typeMode, StartPageNumber, cancellationToken),
+            _ => await _apiClient.GetNewFollowedPreviewsAsync(StartPageNumber, FeedMode, cancellationToken)
+        };
+
+        RefreshArtistList();
+        ApplyPreviewFilters();
+        OnPropertyChanged(nameof(GalleryTitle));
+        OnPropertyChanged(nameof(GalleryStatusLine));
+        Status = $"Loaded {NewFollowedPreviews.Count} item(s) for {GalleryFeed}.";
     }
 
     private bool ShouldShowPreview(PreviewItem item)
@@ -451,6 +573,13 @@ public partial class MainViewModel : ObservableObject
 
         return ContentTypeFilter == "All" ||
                item.ContentType.Contains(ContentTypeFilter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool ShouldShowArtist(PreviewItem item)
+    {
+        return SelectedArtist is null ||
+               SelectedArtist.Name == item.ArtistName ||
+               (!string.IsNullOrWhiteSpace(SelectedArtist.MemberId) && SelectedArtist.MemberId == item.ArtistId);
     }
 
     private async Task RunDownloadJobAsync(
@@ -501,6 +630,63 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void RefreshArtistList()
+    {
+        var selected = SelectedArtist?.MemberId ?? SelectedArtist?.Name;
+        FollowedArtists.Clear();
+
+        var artists = _previewCache
+            .Where(ShouldShowPreview)
+            .GroupBy(item => item.ArtistId ?? item.ArtistName)
+            .Select(group =>
+            {
+                var first = group.First();
+                return new FollowedArtist(first.ArtistName, first.ArtistId, group.Count());
+            })
+            .OrderByDescending(item => item.WorkCount)
+            .ThenBy(item => item.Name);
+
+        foreach (var artist in artists)
+        {
+            FollowedArtists.Add(artist);
+            if ((artist.MemberId ?? artist.Name) == selected)
+            {
+                SelectedArtist = artist;
+            }
+        }
+    }
+
+    private void ApplyPreviewFilters()
+    {
+        NewFollowedPreviews.Clear();
+        foreach (var item in _previewCache)
+        {
+            if (ShouldShowPreview(item) && ShouldShowArtist(item))
+            {
+                NewFollowedPreviews.Add(item);
+            }
+        }
+
+        OnPropertyChanged(nameof(GalleryStatusLine));
+    }
+
+    partial void OnGalleryFeedChanged(string value)
+    {
+        OnPropertyChanged(nameof(GalleryTitle));
+        OnPropertyChanged(nameof(GalleryStatusLine));
+    }
+
+    partial void OnSelectedArtistChanged(FollowedArtist? value)
+    {
+        ApplyPreviewFilters();
+    }
+
+    [RelayCommand]
+    private void ClearSelectedArtist()
+    {
+        SelectedArtist = null;
+    }
+
     private static void OpenPath(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -519,4 +705,12 @@ public partial class MainViewModel : ObservableObject
     {
         return "\"" + value.Replace("\"", "\"\"") + "\"";
     }
+
+    private string FeedMode => ContentTypeFilter switch
+    {
+        "Illust" => "safe",
+        "Manga" => "safe",
+        "Ugoira" => "all",
+        _ => "all"
+    };
 }
