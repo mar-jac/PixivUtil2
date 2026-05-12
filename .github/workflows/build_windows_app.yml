@@ -1,0 +1,63 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "cursor/**"
+    paths:
+      - ".github/workflows/build_windows_app.yml"
+      - "src/PixivUtil.Windows/**"
+      - "windows/build-native.ps1"
+  pull_request:
+    paths:
+      - ".github/workflows/build_windows_app.yml"
+      - "src/PixivUtil.Windows/**"
+      - "windows/build-native.ps1"
+
+jobs:
+  build-winui:
+    name: Build PixivUtil Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore native Windows app
+        shell: pwsh
+        run: dotnet restore src/PixivUtil.Windows/PixivUtil.Windows.csproj -r win-x64
+
+      - name: Publish native Windows app
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.Windows/PixivUtil.Windows.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:WindowsPackageType=None
+          -p:PublishDir="${{ github.workspace }}\artifacts\PixivUtil.Windows\win-x64\"
+
+      - name: Create downloadable zip
+        shell: pwsh
+        run: |
+          $zipPath = "${{ github.workspace }}\artifacts\PixivUtil.Windows-win-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive `
+            -Path "${{ github.workspace }}\artifacts\PixivUtil.Windows\win-x64\*" `
+            -DestinationPath $zipPath
+          Get-ChildItem "${{ github.workspace }}\artifacts" -Recurse
+
+      - name: Upload Windows app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil.Windows-win-x64
+          path: artifacts/PixivUtil.Windows-win-x64.zip
+          if-no-files-found: error
