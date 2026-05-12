@@ -6,7 +6,11 @@ public sealed record PreviewItem(
     string ArtistName,
     string PageUrl,
     string? ThumbnailUrl,
-    string? LocalPath = null)
+    string? LocalPath = null,
+    string ContentType = "Illust",
+    int PageCount = 1,
+    int BookmarkCount = 0,
+    bool IsR18 = false)
 {
     public Uri? ThumbnailUri =>
         string.IsNullOrWhiteSpace(ThumbnailUrl)
@@ -14,4 +18,9 @@ public sealed record PreviewItem(
             : new Uri(ThumbnailUrl, UriKind.Absolute);
 
     public Uri PageUri => new(PageUrl, UriKind.Absolute);
+
+    public string Summary =>
+        $"{ContentType} | {Math.Max(PageCount, 1)} page(s)" +
+        (BookmarkCount > 0 ? $" | {BookmarkCount:N0} bookmarks" : "") +
+        (IsR18 ? " | R-18" : "");
 }

@@ -22,8 +22,30 @@ as the desktop UI technology.
   - Sketch posts
 - New content downloads from followed artists using the compatibility bridge for
   the existing feature-complete downloader.
+- Combined workspace UI with:
+  - account/backend health
+  - content-type and R-18 preview filters
+  - search across history, artwork IDs, member IDs, and local paths
+  - selected-preview downloads
+  - redownload from history
+  - download queue state and backend output
+  - CSV export for filtered history
 - Full feature catalog for the legacy modes so parity is available while native
   services are implemented incrementally.
+
+## Backend reliability goals
+
+The Windows app separates backend-facing work into services so each piece can be
+validated independently:
+
+- `PixivApiClient` handles authenticated Pixiv JSON preview calls.
+- `PixivDatabase` opens the existing SQLite database read-only for history.
+- `PixivSettingsStore` reads and updates `config.ini` without changing unrelated
+  keys.
+- `LegacyPixivBridge` keeps every original downloader mode callable until that
+  mode has a native C# implementation.
+- `MainViewModel` tracks active jobs and command output so failures are visible
+  instead of being swallowed by the UI.
 
 ## Why a bridge still exists
 

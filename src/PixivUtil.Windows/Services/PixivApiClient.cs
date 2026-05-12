@@ -97,7 +97,11 @@ public sealed class PixivApiClient : IDisposable
             title,
             artist,
             $"https://www.pixiv.net/artworks/{artworkId}",
-            thumbnail);
+            thumbnail,
+            ContentType: GetString(body, "illustType") ?? GetString(body, "xRestrict") ?? "Illust",
+            PageCount: GetInt(body, "pageCount") ?? 1,
+            BookmarkCount: GetInt(body, "bookmarkCount") ?? 0,
+            IsR18: GetInt(body, "xRestrict") > 0);
     }
 
     private void ApplyCookies()
@@ -131,7 +135,11 @@ public sealed class PixivApiClient : IDisposable
                 GetString(item, "title") ?? $"Artwork {id}",
                 GetString(item, "userName") ?? "Unknown artist",
                 $"https://www.pixiv.net/artworks/{id}",
-                TryGetUrl(item, "url") ?? TryGetUrl(item, "thumb") ?? TryGetUrl(item, "regular"));
+                TryGetUrl(item, "url") ?? TryGetUrl(item, "thumb") ?? TryGetUrl(item, "regular"),
+                ContentType: GetString(item, "illustType") ?? "Illust",
+                PageCount: GetInt(item, "pageCount") ?? 1,
+                BookmarkCount: GetInt(item, "bookmarkCount") ?? 0,
+                IsR18: GetInt(item, "xRestrict") > 0);
         }
     }
 
@@ -152,6 +160,21 @@ public sealed class PixivApiClient : IDisposable
         return element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
+    }
+
+    private static int? GetInt(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.Number when property.TryGetInt32(out var value) => value,
+            JsonValueKind.String when int.TryParse(property.GetString(), out var value) => value,
+            _ => null
+        };
     }
 
     private static void ThrowIfPixivError(JsonElement root)

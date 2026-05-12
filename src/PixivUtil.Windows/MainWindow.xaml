@@ -5,7 +5,7 @@
     xmlns:models="using:PixivUtil.Windows.Models"
     xmlns:vm="using:PixivUtil.Windows.ViewModels">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="24" RowDefinitions="Auto,*,Auto">
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="20" RowDefinitions="Auto,*,Auto">
         <Grid.DataContext>
             <vm:MainViewModel />
         </Grid.DataContext>
@@ -13,7 +13,7 @@
         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
             <StackPanel Spacing="4">
                 <TextBlock Text="PixivUtil Windows" FontSize="28" FontWeight="SemiBold" />
-                <TextBlock Text="Native WinUI app for previews, account history, and followed-artist downloads." Opacity="0.72" />
+                <TextBlock Text="Followed previews, account history, downloads, and backend health in one native workspace." Opacity="0.72" />
             </StackPanel>
             <ProgressRing Grid.Column="1" Width="32" Height="32" IsActive="{Binding IsBusy}" />
 
@@ -26,122 +26,189 @@
                 Message="{Binding Status}" />
         </Grid>
 
-        <TabView Grid.Row="1" Margin="0,20,0,0">
-            <TabViewItem Header="Followed previews">
-                <Grid ColumnDefinitions="360,*" ColumnSpacing="20">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
+        <Grid Grid.Row="1" Margin="0,18,0,0" ColumnDefinitions="280,*,340" ColumnSpacing="16">
+            <ScrollViewer>
+                <StackPanel Spacing="14">
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
+                            <InfoBadge Value="OK" />
+                            <TextBlock Text="{Binding AccountStatus}" Opacity="0.8" />
+                            <TextBox
+                                Header="PHPSESSID cookie"
+                                PlaceholderText="Paste PHPSESSID when you want to save it"
+                                Text="{Binding PixivCookie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Content="Save cookie" Command="{Binding SaveCookieCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Filters" FontSize="18" FontWeight="SemiBold" />
+                            <ComboBox
+                                Header="Content type"
+                                ItemsSource="{Binding ContentTypeFilters}"
+                                SelectedItem="{Binding ContentTypeFilter, Mode=TwoWay}" />
+                            <ToggleSwitch Header="Show R-18 previews" IsOn="{Binding ShowR18, Mode=TwoWay}" />
+                            <ToggleSwitch Header="Auto-download after refresh" IsOn="{Binding AutoDownloadNew, Mode=TwoWay}" />
+                            <NumberBox Header="Start page" Minimum="1" Value="{Binding StartPage, Mode=TwoWay}" />
+                            <NumberBox Header="End page (0 = all)" Minimum="0" Value="{Binding EndPage, Mode=TwoWay}" />
+                            <NumberBox Header="Bookmark limit (-1 = off)" Minimum="-1" Value="{Binding BookmarkCountLimit, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Backend" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding BackendStatus}" />
+                            <TextBlock Text="Database" FontWeight="SemiBold" Opacity="0.72" />
+                            <TextBlock Text="{Binding DatabasePath}" TextWrapping="Wrap" Opacity="0.72" />
+                            <TextBlock Text="Download root" FontWeight="SemiBold" Opacity="0.72" />
+                            <TextBlock Text="{Binding DownloadRoot}" TextWrapping="Wrap" Opacity="0.72" />
+                            <Button Content="Open download root" Command="{Binding OpenDownloadRootCommand}" />
+                            <Button Content="Open database folder" Command="{Binding OpenDatabaseFolderCommand}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Column="1" RowDefinitions="Auto,2*,Auto,*" RowSpacing="12">
+                <Border Padding="12" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
                         <TextBox
-                            Header="PHPSESSID cookie"
-                            PlaceholderText="Paste the Pixiv PHPSESSID cookie"
-                            Text="{Binding PixivCookie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Content="Save cookie" Command="{Binding SaveCookieCommand}" />
+                            PlaceholderText="Search history, artist, artwork ID, or file path"
+                            Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="1" Content="Refresh all" Command="{Binding RefreshWorkspaceCommand}" />
+                        <Button Grid.Column="2" Content="Preview followed" Command="{Binding PreviewNewFollowedCommand}" />
+                        <Button Grid.Column="3" Content="Download new" Command="{Binding DownloadNewFollowedCommand}" />
+                    </Grid>
+                </Border>
 
-                        <TextBlock Margin="0,16,0,0" Text="New content from followed artists" FontSize="18" FontWeight="SemiBold" />
-                        <NumberBox Header="Start page" Minimum="1" Value="{Binding StartPage, Mode=TwoWay}" />
-                        <NumberBox Header="End page (0 = all)" Minimum="0" Value="{Binding EndPage, Mode=TwoWay}" />
-                        <NumberBox Header="Bookmark count limit (-1 = disabled)" Minimum="-1" Value="{Binding BookmarkCountLimit, Mode=TwoWay}" />
-
-                        <Button Content="Preview new followed content" Command="{Binding PreviewNewFollowedCommand}" />
-                        <Button Content="Download new followed content" Command="{Binding DownloadNewFollowedCommand}" />
-                    </StackPanel>
-
-                    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
-                        <TextBlock Text="Previews" FontSize="18" FontWeight="SemiBold" />
-                        <ListView
-                            Grid.Row="1"
-                            Margin="0,12,0,12"
-                            ItemsSource="{Binding NewFollowedPreviews}"
-                            SelectedItem="{Binding SelectedPreview, Mode=TwoWay}">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:PreviewItem">
-                                    <Grid Padding="8" ColumnDefinitions="104,*" ColumnSpacing="12">
-                                        <Border Width="96" Height="96" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                    <TextBlock Text="Followed-artist preview gallery" FontSize="20" FontWeight="SemiBold" />
+                    <GridView
+                        Grid.Row="1"
+                        Margin="0,10,0,0"
+                        ItemsSource="{Binding NewFollowedPreviews}"
+                        SelectedItem="{Binding SelectedPreview, Mode=TwoWay}"
+                        SelectionMode="Single">
+                        <GridView.ItemTemplate>
+                            <DataTemplate x:DataType="models:PreviewItem">
+                                <Border Width="220" Padding="10" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                    <StackPanel Spacing="8">
+                                        <Border Height="132" CornerRadius="10" Background="{ThemeResource ControlFillColorDefaultBrush}">
                                             <Image Source="{x:Bind ThumbnailUrl}" Stretch="UniformToFill" />
                                         </Border>
-                                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <TextBlock Text="{x:Bind ArtistName}" Opacity="0.72" />
-                                            <TextBlock Text="{x:Bind Id}" FontSize="12" Opacity="0.56" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                        <Button Grid.Row="2" Content="Open selected artwork" Command="{Binding OpenSelectedPreviewCommand}" />
-                    </Grid>
-                </Grid>
-            </TabViewItem>
-
-            <TabViewItem Header="All downloads">
-                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="16">
-                    <Grid ColumnDefinitions="360,*" ColumnSpacing="16">
-                        <ComboBox
-                            Header="Feature"
-                            ItemsSource="{Binding DownloadModes}"
-                            SelectedItem="{Binding SelectedDownloadMode, Mode=TwoWay}"
-                            DisplayMemberPath="Name" />
-                        <TextBox
-                            Grid.Column="1"
-                            Header="Input"
-                            PlaceholderText="IDs, tags, file path, or quoted arguments"
-                            Text="{Binding Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-
-                    <Grid Grid.Row="1" ColumnDefinitions="160,160,180,180,*" ColumnSpacing="12">
-                        <NumberBox Header="Start page" Minimum="1" Value="{Binding StartPage, Mode=TwoWay}" />
-                        <NumberBox Grid.Column="1" Header="End page" Minimum="0" Value="{Binding EndPage, Mode=TwoWay}" />
-                        <CheckBox Grid.Column="2" Content="Include Sketch" IsChecked="{Binding IncludeSketch, Mode=TwoWay}" VerticalAlignment="Bottom" />
-                        <CheckBox Grid.Column="3" Content="Wildcard tags" IsChecked="{Binding UseWildcardTags, Mode=TwoWay}" VerticalAlignment="Bottom" />
-                        <Button Grid.Column="4" Content="Run selected download" Command="{Binding DownloadSelectedModeCommand}" VerticalAlignment="Bottom" />
-                    </Grid>
-
-                    <TextBox
-                        Grid.Row="2"
-                        Header="Command output"
-                        Text="{Binding CommandOutput, Mode=OneWay}"
-                        AcceptsReturn="True"
-                        IsReadOnly="True"
-                        TextWrapping="Wrap"
-                        VerticalScrollBarVisibility="Auto" />
-                </Grid>
-            </TabViewItem>
-
-            <TabViewItem Header="Account history">
-                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button Content="Refresh history" Command="{Binding RefreshHistoryCommand}" />
-                        <Button Content="Open selected local file/artwork" Command="{Binding OpenSelectedHistoryCommand}" />
-                    </StackPanel>
-
-                    <ListView
-                        Grid.Row="1"
-                        ItemsSource="{Binding AccountHistory}"
-                        SelectedItem="{Binding SelectedHistoryItem, Mode=TwoWay}">
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="models:DownloadHistoryItem">
-                                <Grid Padding="8" ColumnDefinitions="96,*,160" ColumnSpacing="12">
-                                    <TextBlock Text="{x:Bind Source}" FontWeight="SemiBold" />
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                        <TextBlock Text="{x:Bind LocalPath}" Opacity="0.64" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" />
+                                        <TextBlock Text="{x:Bind ArtistName}" Opacity="0.72" />
+                                        <TextBlock Text="{x:Bind Summary}" FontSize="12" Opacity="0.64" TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2" Spacing="2">
-                                        <TextBlock Text="{x:Bind Id}" />
-                                        <TextBlock Text="{x:Bind LastUpdatedDisplay}" Opacity="0.64" />
-                                    </StackPanel>
-                                </Grid>
+                                </Border>
                             </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
+                        </GridView.ItemTemplate>
+                    </GridView>
                 </Grid>
-            </TabViewItem>
-        </TabView>
+
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+                    <TextBlock Text="Account history" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="Refresh history" Command="{Binding RefreshHistoryCommand}" />
+                    <Button Grid.Column="2" Content="Export CSV" Command="{Binding ExportHistoryCsvCommand}" />
+                    <Button Grid.Column="3" Content="Open selected" Command="{Binding OpenSelectedHistoryCommand}" />
+                </Grid>
+
+                <ListView
+                    Grid.Row="3"
+                    ItemsSource="{Binding VisibleHistory}"
+                    SelectedItem="{Binding SelectedHistoryItem, Mode=TwoWay}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:DownloadHistoryItem">
+                            <Grid Padding="8" ColumnDefinitions="86,*,132,96" ColumnSpacing="12">
+                                <TextBlock Text="{x:Bind Source}" FontWeight="SemiBold" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="1" />
+                                    <TextBlock Text="{x:Bind LocalPath}" Opacity="0.64" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{x:Bind LastUpdatedDisplay}" Opacity="0.64" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+
+            <ScrollViewer Grid.Column="2">
+                <StackPanel Spacing="14">
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Inspector" FontSize="20" FontWeight="SemiBold" />
+                            <Border Height="190" CornerRadius="12" Background="{ThemeResource ControlFillColorDefaultBrush}">
+                                <Image Source="{Binding SelectedPreview.ThumbnailUrl}" Stretch="UniformToFill" />
+                            </Border>
+                            <TextBlock Text="{Binding SelectedPreview.Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedPreview.ArtistName}" Opacity="0.72" />
+                            <TextBlock Text="{Binding SelectedPreview.Summary}" FontSize="12" Opacity="0.64" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <Button Content="Open Pixiv" Command="{Binding OpenSelectedPreviewCommand}" />
+                                <Button Grid.Column="1" Content="Download" Command="{Binding DownloadSelectedPreviewCommand}" />
+                            </Grid>
+                            <Button Content="Redownload selected history item" Command="{Binding RedownloadSelectedHistoryCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="All download modes" FontSize="18" FontWeight="SemiBold" />
+                                <Button Grid.Column="1" Content="Run" Command="{Binding DownloadSelectedModeCommand}" />
+                            </Grid>
+                            <ComboBox
+                                Header="Feature"
+                                ItemsSource="{Binding DownloadModes}"
+                                SelectedItem="{Binding SelectedDownloadMode, Mode=TwoWay}"
+                                DisplayMemberPath="Name" />
+                            <TextBox
+                                Header="Input"
+                                PlaceholderText="IDs, tags, file path, or quoted arguments"
+                                Text="{Binding Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <CheckBox Content="Include Pixiv Sketch" IsChecked="{Binding IncludeSketch, Mode=TwoWay}" />
+                            <CheckBox Content="Wildcard tags" IsChecked="{Binding UseWildcardTags, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+                            <TextBlock Text="Download queue" FontSize="18" FontWeight="SemiBold" />
+                            <ListView Grid.Row="1" MaxHeight="260" ItemsSource="{Binding DownloadJobs}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:DownloadJob">
+                                        <StackPanel Padding="6" Spacing="4">
+                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" Opacity="0.72" />
+                                            <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" />
+                                            <TextBlock Text="{x:Bind StartedAtDisplay}" FontSize="12" Opacity="0.56" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <TextBox
+                                Grid.Row="2"
+                                Header="Backend output"
+                                Text="{Binding CommandOutput, Mode=OneWay}"
+                                AcceptsReturn="True"
+                                IsReadOnly="True"
+                                MaxHeight="180"
+                                TextWrapping="Wrap"
+                                VerticalScrollBarVisibility="Auto" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
 
         <TextBlock
             Grid.Row="2"
             Margin="0,16,0,0"
             Opacity="0.64"
-            Text="This native app uses C# services for previews/history and can invoke the existing downloader bridge for full feature parity while native download services are completed." />
+            Text="Native C# services handle previews/history/queue state; the compatibility bridge keeps original PixivUtil download features available while backend ports continue." />
     </Grid>
 </Window>
