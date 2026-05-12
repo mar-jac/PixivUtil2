@@ -18,7 +18,7 @@ from PyInstaller.utils.hooks import (
 )
 
 
-ROOT = Path(SPECPATH).parent.parent
+ROOT = Path.cwd()
 ICON = ROOT / "icon2.ico"
 
 
