@@ -1,3 +1,7 @@
 include requirements.txt
-include PixivConstant.py
-include readme.txt
+include README.md
+include common/PixivConstant.py
+include content_provider.json
+include icon2.ico
+include novel_template.html
+include template.html

@@ -1,0 +1,198 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "cursor/**"
+    paths:
+      - ".github/workflows/build_windows_app.yml"
+      - "src/PixivUtil.Windows/**"
+      - "src/PixivUtil.WindowsTrial/**"
+      - "windows/build-native.ps1"
+      - "windows/PixivUtil2-Backend-Onefile.spec"
+      - "windows/PixivUtil2-Windows.spec"
+  pull_request:
+    paths:
+      - ".github/workflows/build_windows_app.yml"
+      - "src/PixivUtil.Windows/**"
+      - "src/PixivUtil.WindowsTrial/**"
+      - "windows/build-native.ps1"
+      - "windows/PixivUtil2-Backend-Onefile.spec"
+      - "windows/PixivUtil2-Windows.spec"
+
+jobs:
+  build-trial-bundle:
+    name: Build downloadable trial bundle
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Build PixivUtil2 backend exe
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.20.0"
+          python -m PyInstaller --clean --noconfirm windows\PixivUtil2-Windows.spec
+
+      - name: Publish trial shell
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.WindowsTrial/PixivUtil.WindowsTrial.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=false
+          -p:PublishDir="${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\"
+
+      - name: Combine shell and backend
+        shell: pwsh
+        run: |
+          Copy-Item -Path "${{ github.workspace }}\dist\PixivUtil2-Windows\*" `
+            -Destination "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\" `
+            -Recurse `
+            -Force
+          $zipPath = "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial-win-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive `
+            -Path "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\*" `
+            -DestinationPath $zipPath
+          Get-ChildItem "${{ github.workspace }}\artifacts" -Recurse
+
+      - name: Upload trial artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil.WindowsTrial-win-x64
+          path: artifacts/PixivUtil.WindowsTrial-win-x64.zip
+          if-no-files-found: error
+
+  build-standalone-exe:
+    name: Build standalone trial exe
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Build embedded backend exe
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.20.0"
+          python -m PyInstaller --clean --noconfirm windows\PixivUtil2-Backend-Onefile.spec
+          New-Item -ItemType Directory -Force src\PixivUtil.WindowsTrial\Resources
+          Copy-Item dist\PixivUtil2.exe src\PixivUtil.WindowsTrial\Resources\PixivUtil2.exe -Force
+
+      - name: Publish standalone trial exe
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.WindowsTrial/PixivUtil.WindowsTrial.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishDir="${{ github.workspace }}\artifacts\standalone\"
+
+      - name: Rename standalone exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "${{ github.workspace }}\artifacts\exe"
+          Copy-Item `
+            "${{ github.workspace }}\artifacts\standalone\PixivUtil.WindowsTrial.exe" `
+            "${{ github.workspace }}\artifacts\exe\PixivUtil-Windows-Standalone.exe" `
+            -Force
+          Get-ChildItem "${{ github.workspace }}\artifacts\exe"
+
+      - name: Upload standalone exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil-Windows-Standalone
+          path: artifacts/exe/PixivUtil-Windows-Standalone.exe
+          if-no-files-found: error
+
+  build-winui:
+    name: Build PixivUtil Windows
+    if: ${{ false }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore native Windows app
+        shell: pwsh
+        run: dotnet restore src/PixivUtil.Windows/PixivUtil.Windows.csproj -r win-x64
+
+      - name: Publish native Windows app
+        id: publish
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.Windows/PixivUtil.Windows.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:WindowsPackageType=None
+          -p:PublishDir="${{ github.workspace }}\artifacts\PixivUtil.Windows\win-x64\"
+
+      - name: Print XAML compiler diagnostics
+        if: failure() && steps.publish.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Get-ChildItem src\PixivUtil.Windows\obj -Recurse -Filter output.json | ForEach-Object {
+            Write-Host "----- $($_.FullName) -----"
+            Get-Content $_.FullName -Raw
+          }
+          Get-ChildItem src\PixivUtil.Windows\obj -Recurse -Filter *.err | ForEach-Object {
+            Write-Host "----- $($_.FullName) -----"
+            Get-Content $_.FullName -Raw
+          }
+
+      - name: Create downloadable zip
+        shell: pwsh
+        run: |
+          $zipPath = "${{ github.workspace }}\artifacts\PixivUtil.Windows-win-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive `
+            -Path "${{ github.workspace }}\artifacts\PixivUtil.Windows\win-x64\*" `
+            -DestinationPath $zipPath
+          Get-ChildItem "${{ github.workspace }}\artifacts" -Recurse
+
+      - name: Upload Windows app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil.Windows-win-x64
+          path: artifacts/PixivUtil.Windows-win-x64.zip
+          if-no-files-found: error
