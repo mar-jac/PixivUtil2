@@ -16,6 +16,64 @@ on:
       - "windows/build-native.ps1"
 
 jobs:
+  build-trial-bundle:
+    name: Build downloadable trial bundle
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Build PixivUtil2 backend exe
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.20.0"
+          python -m PyInstaller --clean --noconfirm windows\PixivUtil2-Windows.spec
+
+      - name: Publish trial shell
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.WindowsTrial/PixivUtil.WindowsTrial.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=false
+          -p:PublishDir="${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\"
+
+      - name: Combine shell and backend
+        shell: pwsh
+        run: |
+          Copy-Item -Path "${{ github.workspace }}\dist\PixivUtil2-Windows\*" `
+            -Destination "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\" `
+            -Recurse `
+            -Force
+          $zipPath = "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial-win-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive `
+            -Path "${{ github.workspace }}\artifacts\PixivUtil.WindowsTrial\win-x64\*" `
+            -DestinationPath $zipPath
+          Get-ChildItem "${{ github.workspace }}\artifacts" -Recurse
+
+      - name: Upload trial artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil.WindowsTrial-win-x64
+          path: artifacts/PixivUtil.WindowsTrial-win-x64.zip
+          if-no-files-found: error
+
   build-winui:
     name: Build PixivUtil Windows
     runs-on: windows-latest
