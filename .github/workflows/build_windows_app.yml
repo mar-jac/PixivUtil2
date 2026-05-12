@@ -74,6 +74,62 @@ jobs:
           path: artifacts/PixivUtil.WindowsTrial-win-x64.zip
           if-no-files-found: error
 
+  build-standalone-exe:
+    name: Build standalone trial exe
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Build embedded backend exe
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.20.0"
+          python -m PyInstaller --clean --noconfirm windows\PixivUtil2-Backend-Onefile.spec
+          New-Item -ItemType Directory -Force src\PixivUtil.WindowsTrial\Resources
+          Copy-Item dist\PixivUtil2.exe src\PixivUtil.WindowsTrial\Resources\PixivUtil2.exe -Force
+
+      - name: Publish standalone trial exe
+        shell: pwsh
+        run: >
+          dotnet publish src/PixivUtil.WindowsTrial/PixivUtil.WindowsTrial.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishDir="${{ github.workspace }}\artifacts\standalone\"
+
+      - name: Rename standalone exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "${{ github.workspace }}\artifacts\exe"
+          Copy-Item `
+            "${{ github.workspace }}\artifacts\standalone\PixivUtil.WindowsTrial.exe" `
+            "${{ github.workspace }}\artifacts\exe\PixivUtil-Windows-Standalone.exe" `
+            -Force
+          Get-ChildItem "${{ github.workspace }}\artifacts\exe"
+
+      - name: Upload standalone exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixivUtil-Windows-Standalone
+          path: artifacts/exe/PixivUtil-Windows-Standalone.exe
+          if-no-files-found: error
+
   build-winui:
     name: Build PixivUtil Windows
     runs-on: windows-latest

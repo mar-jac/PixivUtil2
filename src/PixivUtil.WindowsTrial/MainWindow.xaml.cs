@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 
 namespace PixivUtil.WindowsTrial;
@@ -144,7 +145,41 @@ public partial class MainWindow : Window
     private string? BackendPath()
     {
         var backend = Path.Combine(_appDirectory, "PixivUtil2.exe");
-        return File.Exists(backend) ? backend : null;
+        if (File.Exists(backend))
+        {
+            return backend;
+        }
+
+        return ExtractEmbeddedBackend();
+    }
+
+    private static string? ExtractEmbeddedBackend()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = assembly
+            .GetManifestResourceNames()
+            .FirstOrDefault(name => name.EndsWith("PixivUtil2.exe", StringComparison.OrdinalIgnoreCase));
+        if (resourceName is null)
+        {
+            return null;
+        }
+
+        var backendDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PixivUtil.WindowsTrial",
+            "backend");
+        Directory.CreateDirectory(backendDirectory);
+
+        var backendPath = Path.Combine(backendDirectory, "PixivUtil2.exe");
+        using var resource = assembly.GetManifestResourceStream(resourceName);
+        if (resource is null)
+        {
+            return null;
+        }
+
+        using var file = File.Create(backendPath);
+        resource.CopyTo(file);
+        return backendPath;
     }
 
     private static void OpenUrl(string url)
