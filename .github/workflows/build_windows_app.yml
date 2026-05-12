@@ -34,6 +34,7 @@ jobs:
         run: dotnet restore src/PixivUtil.Windows/PixivUtil.Windows.csproj -r win-x64
 
       - name: Publish native Windows app
+        id: publish
         shell: pwsh
         run: >
           dotnet publish src/PixivUtil.Windows/PixivUtil.Windows.csproj
@@ -42,6 +43,19 @@ jobs:
           --self-contained true
           -p:WindowsPackageType=None
           -p:PublishDir="${{ github.workspace }}\artifacts\PixivUtil.Windows\win-x64\"
+
+      - name: Print XAML compiler diagnostics
+        if: failure() && steps.publish.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Get-ChildItem src\PixivUtil.Windows\obj -Recurse -Filter output.json | ForEach-Object {
+            Write-Host "----- $($_.FullName) -----"
+            Get-Content $_.FullName -Raw
+          }
+          Get-ChildItem src\PixivUtil.Windows\obj -Recurse -Filter *.err | ForEach-Object {
+            Write-Host "----- $($_.FullName) -----"
+            Get-Content $_.FullName -Raw
+          }
 
       - name: Create downloadable zip
         shell: pwsh
