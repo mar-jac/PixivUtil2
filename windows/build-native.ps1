@@ -15,7 +15,7 @@ $PublishDir = Join-Path $RepoRoot "artifacts\PixivUtil.Windows\$Runtime"
 Set-Location $RepoRoot
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw "The .NET SDK was not found. Install .NET 10 SDK and the Windows App SDK workload on Windows."
+    throw "The .NET SDK was not found. Install .NET 8 SDK and the Windows App SDK workload on Windows."
 }
 
 if (-not $NoRestore) {

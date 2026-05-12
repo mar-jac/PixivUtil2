@@ -6,7 +6,7 @@ as the desktop UI technology.
 
 ## Stack
 
-- .NET 10
+- .NET 8 LTS for the current WinUI build target
 - C# with nullable reference types
 - WinUI 3 via Windows App SDK 2.0.1
 - CommunityToolkit.Mvvm for typed MVVM state and commands
@@ -69,7 +69,7 @@ rewrite.
 
 ## Build on Windows
 
-Install the .NET 10 SDK and Windows App SDK build prerequisites, then run from the
+Install the .NET 8 SDK and Windows App SDK build prerequisites, then run from the
 repository root:
 
 ```powershell

@@ -57,7 +57,7 @@
 # Native Windows app
 
 This repository now includes a modern Windows-native app foundation in
-`src/PixivUtil.Windows`, built with C#/.NET 10 and WinUI 3. It adds:
+`src/PixivUtil.Windows`, built with C#/.NET and WinUI 3. It adds:
 
 - followed-artist previews,
 - account/download history backed by `db.sqlite`,
