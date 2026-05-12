@@ -86,17 +86,17 @@
                                 ItemsSource="{Binding FollowedArtists}"
                                 SelectedItem="{Binding SelectedArtist, Mode=TwoWay}">
                                 <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="models:FollowedArtist">
+                                    <DataTemplate>
                                         <Grid Margin="6">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
-                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{x:Bind WorkCountDisplay}" FontSize="12" Opacity="0.64" />
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding WorkCountDisplay}" FontSize="12" Opacity="0.64" />
                                             </StackPanel>
-                                            <CheckBox Grid.Column="1" IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+                                            <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected, Mode=TwoWay}" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
@@ -200,15 +200,15 @@
                         SelectedItem="{Binding SelectedPreview, Mode=TwoWay}"
                         SelectionMode="Single">
                         <GridView.ItemTemplate>
-                            <DataTemplate x:DataType="models:PreviewItem">
+                            <DataTemplate>
                                 <Border Width="220" Padding="10" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                                     <StackPanel Spacing="8">
                                         <Border Height="132" CornerRadius="10" Background="{ThemeResource ControlFillColorDefaultBrush}">
-                                            <Image Source="{x:Bind ThumbnailUrl}" Stretch="UniformToFill" />
+                                            <Image Source="{Binding ThumbnailUrl}" Stretch="UniformToFill" />
                                         </Border>
-                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" />
-                                        <TextBlock Text="{x:Bind ArtistName}" Opacity="0.72" />
-                                        <TextBlock Text="{x:Bind Summary}" FontSize="12" Opacity="0.64" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" />
+                                        <TextBlock Text="{Binding ArtistName}" Opacity="0.72" />
+                                        <TextBlock Text="{Binding Summary}" FontSize="12" Opacity="0.64" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -234,7 +234,7 @@
                     ItemsSource="{Binding VisibleHistory}"
                     SelectedItem="{Binding SelectedHistoryItem, Mode=TwoWay}">
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:DownloadHistoryItem">
+                        <DataTemplate>
                             <Grid Margin="8" ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="86" />
@@ -242,13 +242,13 @@
                                     <ColumnDefinition Width="132" />
                                     <ColumnDefinition Width="96" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="{x:Bind Source}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Source}" FontWeight="SemiBold" />
                                 <StackPanel Grid.Column="1" Spacing="2">
-                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="1" />
-                                    <TextBlock Text="{x:Bind LocalPath}" Opacity="0.64" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="1" />
+                                    <TextBlock Text="{Binding LocalPath}" Opacity="0.64" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="{x:Bind LastUpdatedDisplay}" Opacity="0.64" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding Id}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding LastUpdatedDisplay}" Opacity="0.64" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -313,12 +313,12 @@
                             <TextBlock Text="Download queue" FontSize="18" FontWeight="SemiBold" />
                             <ListView Grid.Row="1" MaxHeight="260" ItemsSource="{Binding DownloadJobs}">
                                 <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="models:DownloadJob">
+                                    <DataTemplate>
                                         <StackPanel Padding="6" Spacing="4">
-                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" Opacity="0.72" />
-                                            <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" />
-                                            <TextBlock Text="{x:Bind StartedAtDisplay}" FontSize="12" Opacity="0.56" />
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Status}" Opacity="0.72" />
+                                            <ProgressBar Value="{Binding Progress}" Maximum="100" />
+                                            <TextBlock Text="{Binding StartedAtDisplay}" FontSize="12" Opacity="0.56" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
