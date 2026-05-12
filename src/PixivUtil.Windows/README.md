@@ -12,6 +12,7 @@ as the desktop UI technology.
 - CommunityToolkit.Mvvm for typed MVVM state and commands
 - Microsoft.Data.Sqlite 10.0.5 for existing account/download history
 - HttpClient/System.Text.Json for Pixiv API preview calls
+- Microsoft.Windows.SDK.NET.Ref 10.0.19041.56 or later
 
 ## Implemented workflows
 

@@ -11,7 +11,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
+    <WindowsSdkPackageVersion>10.0.19041.56</WindowsSdkPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
