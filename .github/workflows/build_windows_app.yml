@@ -8,12 +8,18 @@ on:
     paths:
       - ".github/workflows/build_windows_app.yml"
       - "src/PixivUtil.Windows/**"
+      - "src/PixivUtil.WindowsTrial/**"
       - "windows/build-native.ps1"
+      - "windows/PixivUtil2-Backend-Onefile.spec"
+      - "windows/PixivUtil2-Windows.spec"
   pull_request:
     paths:
       - ".github/workflows/build_windows_app.yml"
       - "src/PixivUtil.Windows/**"
+      - "src/PixivUtil.WindowsTrial/**"
       - "windows/build-native.ps1"
+      - "windows/PixivUtil2-Backend-Onefile.spec"
+      - "windows/PixivUtil2-Windows.spec"
 
 jobs:
   build-trial-bundle:
