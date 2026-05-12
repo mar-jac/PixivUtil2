@@ -1,6 +1,8 @@
 beautifulsoup4>=4.9.3
+browser-cookie3>=0.20.1
 certifi>=2021.5.30
 demjson3>=3.0.0
+html5lib>=1.1
 mechanize>=0.4.5
 # numpy>=1.17.2
 Pillow>=8.3.0

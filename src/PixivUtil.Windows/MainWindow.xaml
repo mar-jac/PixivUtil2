@@ -1,0 +1,147 @@
+<Window
+    x:Class="PixivUtil.Windows.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:PixivUtil.Windows.Models"
+    xmlns:vm="using:PixivUtil.Windows.ViewModels">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="24" RowDefinitions="Auto,*,Auto">
+        <Grid.DataContext>
+            <vm:MainViewModel />
+        </Grid.DataContext>
+
+        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+                <TextBlock Text="PixivUtil Windows" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="Native WinUI app for previews, account history, and followed-artist downloads." Opacity="0.72" />
+            </StackPanel>
+            <ProgressRing Grid.Column="1" Width="32" Height="32" IsActive="{Binding IsBusy}" />
+
+            <InfoBar
+                Grid.Row="1"
+                Grid.ColumnSpan="2"
+                Margin="0,16,0,0"
+                IsOpen="True"
+                Severity="Informational"
+                Message="{Binding Status}" />
+        </Grid>
+
+        <TabView Grid.Row="1" Margin="0,20,0,0">
+            <TabViewItem Header="Followed previews">
+                <Grid ColumnDefinitions="360,*" ColumnSpacing="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
+                        <TextBox
+                            Header="PHPSESSID cookie"
+                            PlaceholderText="Paste the Pixiv PHPSESSID cookie"
+                            Text="{Binding PixivCookie, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="Save cookie" Command="{Binding SaveCookieCommand}" />
+
+                        <TextBlock Margin="0,16,0,0" Text="New content from followed artists" FontSize="18" FontWeight="SemiBold" />
+                        <NumberBox Header="Start page" Minimum="1" Value="{Binding StartPage, Mode=TwoWay}" />
+                        <NumberBox Header="End page (0 = all)" Minimum="0" Value="{Binding EndPage, Mode=TwoWay}" />
+                        <NumberBox Header="Bookmark count limit (-1 = disabled)" Minimum="-1" Value="{Binding BookmarkCountLimit, Mode=TwoWay}" />
+
+                        <Button Content="Preview new followed content" Command="{Binding PreviewNewFollowedCommand}" />
+                        <Button Content="Download new followed content" Command="{Binding DownloadNewFollowedCommand}" />
+                    </StackPanel>
+
+                    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+                        <TextBlock Text="Previews" FontSize="18" FontWeight="SemiBold" />
+                        <ListView
+                            Grid.Row="1"
+                            Margin="0,12,0,12"
+                            ItemsSource="{Binding NewFollowedPreviews}"
+                            SelectedItem="{Binding SelectedPreview, Mode=TwoWay}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="models:PreviewItem">
+                                    <Grid Padding="8" ColumnDefinitions="104,*" ColumnSpacing="12">
+                                        <Border Width="96" Height="96" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                            <Image Source="{x:Bind ThumbnailUrl}" Stretch="UniformToFill" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{x:Bind ArtistName}" Opacity="0.72" />
+                                            <TextBlock Text="{x:Bind Id}" FontSize="12" Opacity="0.56" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <Button Grid.Row="2" Content="Open selected artwork" Command="{Binding OpenSelectedPreviewCommand}" />
+                    </Grid>
+                </Grid>
+            </TabViewItem>
+
+            <TabViewItem Header="All downloads">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="16">
+                    <Grid ColumnDefinitions="360,*" ColumnSpacing="16">
+                        <ComboBox
+                            Header="Feature"
+                            ItemsSource="{Binding DownloadModes}"
+                            SelectedItem="{Binding SelectedDownloadMode, Mode=TwoWay}"
+                            DisplayMemberPath="Name" />
+                        <TextBox
+                            Grid.Column="1"
+                            Header="Input"
+                            PlaceholderText="IDs, tags, file path, or quoted arguments"
+                            Text="{Binding Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="160,160,180,180,*" ColumnSpacing="12">
+                        <NumberBox Header="Start page" Minimum="1" Value="{Binding StartPage, Mode=TwoWay}" />
+                        <NumberBox Grid.Column="1" Header="End page" Minimum="0" Value="{Binding EndPage, Mode=TwoWay}" />
+                        <CheckBox Grid.Column="2" Content="Include Sketch" IsChecked="{Binding IncludeSketch, Mode=TwoWay}" VerticalAlignment="Bottom" />
+                        <CheckBox Grid.Column="3" Content="Wildcard tags" IsChecked="{Binding UseWildcardTags, Mode=TwoWay}" VerticalAlignment="Bottom" />
+                        <Button Grid.Column="4" Content="Run selected download" Command="{Binding DownloadSelectedModeCommand}" VerticalAlignment="Bottom" />
+                    </Grid>
+
+                    <TextBox
+                        Grid.Row="2"
+                        Header="Command output"
+                        Text="{Binding CommandOutput, Mode=OneWay}"
+                        AcceptsReturn="True"
+                        IsReadOnly="True"
+                        TextWrapping="Wrap"
+                        VerticalScrollBarVisibility="Auto" />
+                </Grid>
+            </TabViewItem>
+
+            <TabViewItem Header="Account history">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Content="Refresh history" Command="{Binding RefreshHistoryCommand}" />
+                        <Button Content="Open selected local file/artwork" Command="{Binding OpenSelectedHistoryCommand}" />
+                    </StackPanel>
+
+                    <ListView
+                        Grid.Row="1"
+                        ItemsSource="{Binding AccountHistory}"
+                        SelectedItem="{Binding SelectedHistoryItem, Mode=TwoWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DownloadHistoryItem">
+                                <Grid Padding="8" ColumnDefinitions="96,*,160" ColumnSpacing="12">
+                                    <TextBlock Text="{x:Bind Source}" FontWeight="SemiBold" />
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind LocalPath}" Opacity="0.64" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="2">
+                                        <TextBlock Text="{x:Bind Id}" />
+                                        <TextBlock Text="{x:Bind LastUpdatedDisplay}" Opacity="0.64" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </TabViewItem>
+        </TabView>
+
+        <TextBlock
+            Grid.Row="2"
+            Margin="0,16,0,0"
+            Opacity="0.64"
+            Text="This native app uses C# services for previews/history and can invoke the existing downloader bridge for full feature parity while native download services are completed." />
+    </Grid>
+</Window>

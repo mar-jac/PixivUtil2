@@ -10,8 +10,20 @@ import threading
 import os
 import json
 import configparser
+import sys
 from pathlib import Path
 from queue import Queue, Empty
+
+
+def is_frozen_app():
+    return getattr(sys, "frozen", False)
+
+
+def application_dir():
+    if is_frozen_app():
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
 
 class PixivUtilGUI:
     def __init__(self, root):
@@ -20,8 +32,11 @@ class PixivUtilGUI:
         self.root.geometry("900x700")
         
         # Configuration
-        self.config_path = Path("config.ini")
-        self.pixivutil_path = Path("PixivUtil2.py")
+        self.app_dir = application_dir()
+        self.config_path = self.app_dir / "config.ini"
+        self.pixivutil_script_path = self.app_dir / "PixivUtil2.py"
+        exe_name = "PixivUtil2.exe" if os.name == "nt" else "PixivUtil2"
+        self.pixivutil_exe_path = self.app_dir / exe_name
         self.process = None
         self.output_queue = Queue()
         
@@ -31,6 +46,22 @@ class PixivUtilGUI:
         
         self.create_widgets()
         self.load_config()
+
+    def pixivutil_command(self):
+        if self.pixivutil_exe_path.exists():
+            return [str(self.pixivutil_exe_path)]
+        if self.pixivutil_script_path.exists():
+            return [sys.executable, str(self.pixivutil_script_path)]
+        return None
+
+    def show_missing_pixivutil_error(self):
+        messagebox.showerror(
+            "Error",
+            "PixivUtil2 command was not found.\n\n"
+            f"Looked for:\n- {self.pixivutil_exe_path}\n- {self.pixivutil_script_path}\n\n"
+            "Place PixivUtilGUI beside PixivUtil2.exe in a native Windows bundle "
+            "or beside PixivUtil2.py when running from source.",
+        )
         
     def create_widgets(self):
         # Create notebook for tabs
@@ -385,10 +416,9 @@ class PixivUtilGUI:
         self.log_output("Settings saved to config.ini")
     
     def start_download(self):
-        if not self.pixivutil_path.exists():
-            messagebox.showerror("Error", 
-                               f"PixivUtil2.py not found at {self.pixivutil_path}\n"
-                               "Please place this GUI in the same folder as PixivUtil2.py")
+        cmd = self.pixivutil_command()
+        if cmd is None:
+            self.show_missing_pixivutil_error()
             return
         
         mode = self.download_mode.get()
@@ -399,8 +429,7 @@ class PixivUtilGUI:
             return
         
         # Build command
-        import sys
-        cmd = [sys.executable, str(self.pixivutil_path), '-s', mode]
+        cmd = cmd + ['-s', mode]
         
         if input_val:
             if mode == '4' or mode == '7':  # List file modes
@@ -450,6 +479,7 @@ class PixivUtilGUI:
                 universal_newlines=True,
                 bufsize=1,
                 env=env,
+                cwd=self.app_dir,
                 encoding='utf-8',
                 errors='replace'  # Replace characters that can't be encoded
             )
@@ -490,12 +520,12 @@ class PixivUtilGUI:
         self.process = None
     
     def run_db_operation(self, cmd, subcmd):
-        if not self.pixivutil_path.exists():
-            messagebox.showerror("Error", "PixivUtil2.py not found")
+        command = self.pixivutil_command()
+        if command is None:
+            self.show_missing_pixivutil_error()
             return
         
-        import sys
-        command = [sys.executable, str(self.pixivutil_path), '-s', cmd]
+        command = command + ['-s', cmd]
         
         self.log_output(f"\nExecuting database operation: {cmd} {subcmd}\n")
         
@@ -520,6 +550,7 @@ class PixivUtilGUI:
                 universal_newlines=True,
                 bufsize=1,
                 env=env,
+                cwd=self.app_dir,
                 encoding='utf-8',
                 errors='replace'
             )
@@ -556,6 +587,9 @@ class PixivUtilGUI:
 
 def check_dependencies():
     """Check if required dependencies are installed"""
+    if is_frozen_app():
+        return []
+
     missing = []
     
     # Map package names to their import names
@@ -569,7 +603,7 @@ def check_dependencies():
     }
     
     # Read requirements from requirements.txt if it exists
-    req_file = Path("requirements.txt")
+    req_file = application_dir() / "requirements.txt"
     if req_file.exists():
         with open(req_file, 'r') as f:
             for line in f:
@@ -621,7 +655,8 @@ def install_dependencies(missing):
                      '--no-warn-script-location', '--disable-pip-version-check'],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    universal_newlines=True
+                    universal_newlines=True,
+                    cwd=application_dir()
                 )
                 
                 for line in process.stdout:

@@ -14,6 +14,7 @@ except ImportError:
 
 isWindows = (platform.system() == "Windows")
 ranWithPy3 = sys.version_info >= (3, 0)
+is_py2exe_build = isWindows and any(arg.lower() == "py2exe" for arg in sys.argv[1:])
 
 
 # Terminal colors on *nix systems
@@ -30,7 +31,7 @@ class bcolors:
 
 def get_version():
     main_ns = {}
-    ver_path = convert_path('PixivConstant.py')
+    ver_path = convert_path('common/PixivConstant.py')
     with open(ver_path) as ver_file:
         exec(ver_file.read(), main_ns)
     version = main_ns['PIXIVUTIL_VERSION']
@@ -59,7 +60,7 @@ if not isWindows:
         exit(-1)
 
 
-if isWindows:
+if is_py2exe_build:
     import py2exe
 
 console = [{"script": "PixivUtil2.py",              # Main Python script
@@ -70,11 +71,17 @@ options = {'py2exe': {'bundle_files': 3,
                       "packages": ['html5lib', 'sqlite3', 'cloudscraper'],
                       'excludes': ['Tkconstants', 'Tkinter']}, }
 
-setup_kwargs = dict(console=console, requires=requires, options=options)
+setup_kwargs = dict(
+    entry_points={
+        'console_scripts': [
+            'PixivUtil2 = PixivUtil2:main',
+            'PixivUtilGUI = PixivUtilGUI:main',
+        ],
+    },
+)
 
-if not isWindows:
-    setup_kwargs = dict(
-        entry_points={'console_scripts': ['PixivUtil2 = PixivUtil2:main', ]})
+if is_py2exe_build:
+    setup_kwargs = dict(console=console, requires=requires, options=options)
 
 if SETUPTOOLS_USED:
     setup_kwargs['project_urls'] = {
@@ -87,10 +94,10 @@ if SETUPTOOLS_USED:
 here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'requirements.txt')) as f:
     install_requires = f.read().split('\n')
-install_requires = [x.strip() for x in install_requires]
+install_requires = [x.strip() for x in install_requires if x.strip() and not x.lstrip().startswith('#')]
 
 # get long_description
-readme_path = convert_path('readme.md')
+readme_path = convert_path('README.md')
 with open(readme_path, 'r', encoding='utf-8') as readme_file:
     long_description = readme_file.read()
 
@@ -118,7 +125,7 @@ setup(
     **setup_kwargs
 )
 
-if isWindows:
+if is_py2exe_build:
     print("Adding cacert.pem.")
     # add certify cacert.pem in library.zip/certifi
     import zipfile

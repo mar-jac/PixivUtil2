@@ -54,6 +54,25 @@
   - Clean Up Database (remove db entry if downloaded file is missing)
 - Export user bookmark (member_id) to a text files.
 
+# Native Windows app
+
+This repository now includes a modern Windows-native app foundation in
+`src/PixivUtil.Windows`, built with C#/.NET 10 and WinUI 3. It adds:
+
+- followed-artist previews,
+- account/download history backed by `db.sqlite`,
+- a dedicated action to download new content from followed artists,
+- a full feature catalog for the existing downloader modes while native C#
+  services are ported mode by mode.
+
+Build it on Windows with:
+
+```powershell
+.\windows\build-native.ps1
+```
+
+See `src/PixivUtil.Windows/README.md` for the architecture and migration plan.
+
 # Docker
 
 ```sh

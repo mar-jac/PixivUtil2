@@ -12,7 +12,17 @@ dependencies = [
     "colorama>=0.4.4",
     "curl-cffi>=0.11.3",
     "demjson3>=3.0.0",
+    "html5lib>=1.1",
     "mechanize>=0.4.5",
     "pillow>=12.2.0",
     "pysocks>=1.7.1",
 ]
+
+[project.optional-dependencies]
+windows-build = [
+    "pyinstaller>=6.20.0",
+]
+
+[project.scripts]
+PixivUtil2 = "PixivUtil2:main"
+PixivUtilGUI = "PixivUtilGUI:main"
